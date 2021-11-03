@@ -18,6 +18,7 @@ from typing import (
     Union,
 )
 
+import dask.array as da
 import numpy as np
 from pydantic import Extra, Field, validator
 
@@ -295,7 +296,16 @@ class ViewerModel(KeymapProvider, MousemapProvider, EventedModel):
             np.round(s / sc).astype('int') if s > 0 else 1
             for s, sc in zip(scene_size, scale)
         ]
-        empty_labels = np.zeros(shape, dtype=int)
+        print('-----------creating new labels layer-----------')
+        # empty_labels = np.zeros(shape, dtype=int)
+        # from PyQt5.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
+        # pyqtRemoveInputHook()
+        # import pdb;pdb.set_trace()
+        # pyqtRestoreInputHook()
+        print('--------------shape ', shape)
+        empty_labels = da.zeros(shape, chunks=self.layers[0].data[0].chunksize, dtype=self.layers[0].data[0].dtype)
+        print("------------------empty_labels", empty_labels)
+        print('-----------created new labels layer-----------')
         self.add_labels(empty_labels, translate=np.array(corner), scale=scale)
 
     def _update_layers(self, *, layers=None):
@@ -494,6 +504,7 @@ class ViewerModel(KeymapProvider, MousemapProvider, EventedModel):
         # should be avoided to keep full functionality
         # from adding a layer through the `layers.append`
         # method
+        print('in ViewerModel.add_layer')
         self.layers.append(layer)
         return layer
 
@@ -650,7 +661,7 @@ class ViewerModel(KeymapProvider, MousemapProvider, EventedModel):
         layer : :class:`napari.layers.Image` or list
             The newly-created image layer or list of image layers.
         """
-
+        print('in ViewerModel.add_image')
         if colormap is not None:
             # standardize colormap argument(s) to Colormaps, and make sure they
             # are in AVAILABLE_COLORMAPS.  This will raise one of many various
@@ -857,6 +868,7 @@ class ViewerModel(KeymapProvider, MousemapProvider, EventedModel):
         layers : list
             A list of any layers that were added to the viewer.
         """
+        print('In ViewerModel.open')
         paths = [path] if isinstance(path, (Path, str)) else path
         paths = [os.fspath(path) for path in paths]  # PathObjects -> str
         if not isinstance(paths, (tuple, list)):
@@ -926,7 +938,7 @@ class ViewerModel(KeymapProvider, MousemapProvider, EventedModel):
             A list of any layers that were added to the viewer.
         """
         from ..plugins.io import read_data_with_plugins
-
+        print('in _add_layers_with_plugins')
         layer_data, hookimpl = read_data_with_plugins(
             path_or_paths, plugin=plugin
         )
@@ -1010,7 +1022,7 @@ class ViewerModel(KeymapProvider, MousemapProvider, EventedModel):
         >>> viewer._add_layer_from_data(*data)
 
         """
-
+        print('in _add_layer_from_data')
         layer_type = (layer_type or '').lower()
 
         # assumes that big integer type arrays are likely labels.

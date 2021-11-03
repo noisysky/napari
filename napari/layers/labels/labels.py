@@ -2,6 +2,7 @@ import warnings
 from collections import deque
 from typing import Dict, List, Optional, Tuple, Union
 
+import dask.array as da
 import numpy as np
 from scipy import ndimage as ndi
 
@@ -230,7 +231,7 @@ class Labels(_ImageBase):
         experimental_slicing_plane=None,
         experimental_clipping_planes=None,
     ):
-
+        print('in Labels.__init__')
         self._seed = seed
         self._background_label = 0
         self._num_colors = num_colors
@@ -1217,16 +1218,45 @@ class Labels(_ImageBase):
             slice_coord = tuple(sc[keep_coords] for sc in slice_coord)
 
         # save the existing values to the history
-        self._save_history(
-            (
-                slice_coord,
-                np.array(self.data[slice_coord], copy=True),
-                new_label,
-            )
-        )
+        print("-----------in paint")
+        print("-----------type(self.data) ", type(self.data))
+        print("-----------slice_coord ", slice_coord)
+        print("-----------len(slice_coord) ", *map(len, slice_coord))
+        print("-----------self.data.shape ", self.data.shape)
+        print("-----------new_label", new_label)
 
-        # update the labels image
-        self.data[slice_coord] = new_label
+        if isinstance(self.data, da.core.Array):
+            indices = self.data.vindex[slice_coord]
+            print("------------type(indices) ", type(indices))
+            print("------------indices ", indices)
+            print("------------indices.compute() ", indices.compute())
+            self._save_history(
+                (
+                    slice_coord,
+                    np.array(self.data.vindex[slice_coord].compute(), copy=True),
+                    new_label,
+                )
+            )
+            print("------------saved history")
+            # self.data[self.data.vindex[slice_coord]] = np.ones(indices.shape) * new_label
+            cnt = 0
+            slice_coord_len = len(slice_coord[0])
+            for point in zip(*slice_coord):
+                print(f"{cnt} of {slice_coord_len}")
+                self.data[point] = new_label
+                cnt += 1
+
+        else:
+            self._save_history(
+                (
+                    slice_coord,
+                    np.array(self.data[slice_coord], copy=True),
+                    new_label,
+                )
+            )
+
+            # update the labels image
+            self.data[slice_coord] = new_label
 
         if refresh is True:
             self.refresh()
