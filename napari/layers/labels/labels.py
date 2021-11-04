@@ -3,6 +3,7 @@ from collections import deque
 from typing import Dict, List, Optional, Tuple, Union
 
 import dask.array as da
+from dask import delayed
 import numpy as np
 from scipy import ndimage as ndi
 
@@ -1241,10 +1242,23 @@ class Labels(_ImageBase):
             # self.data[self.data.vindex[slice_coord]] = np.ones(indices.shape) * new_label
             cnt = 0
             slice_coord_len = len(slice_coord[0])
+
+            @delayed
+            def update_label_values(data, coords, value):
+                data[coords] = value
+                return data
+
+            @delayed
+            def count_nonzero_data(data):
+                return int(da.sum(data))
+
             for point in zip(*slice_coord):
+                self.data = update_label_values(self.data, point, new_label).compute()
                 print(f"{cnt} of {slice_coord_len}")
-                self.data[point] = new_label
                 cnt += 1
+
+            nonzero_data = count_nonzero_data(self.data)
+            print('----------------nonzero_data', nonzero_data.compute())
 
         else:
             self._save_history(
