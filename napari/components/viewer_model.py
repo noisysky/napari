@@ -19,6 +19,7 @@ from typing import (
 )
 
 import numpy as np
+import zarr
 from pydantic import Extra, Field, validator
 
 from .. import layers
@@ -299,7 +300,7 @@ class ViewerModel(KeymapProvider, MousemapProvider, EventedModel):
             np.round(s / sc).astype('int') if s > 0 else 1
             for s, sc in zip(scene_size, scale)
         ]
-        empty_labels = np.zeros(shape, dtype=int)
+        empty_labels = zarr.zeros(shape, chunks=self.layers[0].data[0].chunksize, dtype=self.layers[0].data[0].dtype)
         self.add_labels(empty_labels, translate=np.array(corner), scale=scale)
 
     def _update_layers(self, *, layers=None):

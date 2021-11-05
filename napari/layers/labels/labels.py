@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from scipy import ndimage as ndi
+import zarr
 
 from ...utils import config
 from ...utils._dtype import normalize_dtype
@@ -1216,17 +1217,29 @@ class Labels(_ImageBase):
                 keep_coords = self.data[slice_coord] == self._background_label
             slice_coord = tuple(sc[keep_coords] for sc in slice_coord)
 
-        # save the existing values to the history
-        self._save_history(
-            (
-                slice_coord,
-                np.array(self.data[slice_coord], copy=True),
-                new_label,
+        if isinstance(self.data, zarr.Array):
+            self._save_history(
+                (
+                    slice_coord,
+                    np.array(self.data.vindex[slice_coord], copy=True),
+                    new_label,
+                )
             )
-        )
 
-        # update the labels image
-        self.data[slice_coord] = new_label
+            self.data.vindex[slice_coord] = new_label
+
+        else:
+            # save the existing values to the history
+            self._save_history(
+                (
+                    slice_coord,
+                    np.array(self.data[slice_coord], copy=True),
+                    new_label,
+                )
+            )
+
+            # update the labels image
+            self.data[slice_coord] = new_label
 
         if refresh is True:
             self.refresh()
